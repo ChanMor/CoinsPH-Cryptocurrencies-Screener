@@ -8,14 +8,18 @@ API_BASE_URL = "https://api.pro.coins.ph/openapi"
 
 def get_markets():
     response = requests.get(f"{API_BASE_URL}/v1/exchangeInfo")
+
     markets = response.json()['symbols']
 
-    symbols = [market['symbol'] for market in markets]
+    symbols = [market['symbol'] for market in markets if market['quoteAsset'] == 'PHP']
     return symbols
 
 def get_historical_data(symbol, interval, limit):
     response = requests.get(f'{API_BASE_URL}/quote/v1/klines?symbol={symbol}&interval={interval}&limit={limit}')
     
+    if not response.ok: 
+        return pd.DataFrame([], columns=['close']) 
+
     df = pd.DataFrame(response.json(), columns=[
         'open_time', 'open', 'high', 'low', 'close', 'volume', 'close_time', 
         'quote_asset_volume', 'number_of_trades', 'taker_buy_base_asset_volume', 'taker_buy_quote_asset_volume'
@@ -36,7 +40,6 @@ def calculate_sma(data, period):
 
 def screener():
     symbols = get_markets()
-    
     cryptos = []
 
     for symbol in symbols:
@@ -52,13 +55,13 @@ def screener():
 
         current_price = df['close'].iloc[-1]
 
-        if sma_200 >= sma_150:
+        if sma_200 > sma_150:
             continue
 
-        if sma_150 >= sma_50:
+        if sma_150 > sma_50:
             continue
         
-        if sma_50 >= current_price:
+        if sma_50 > current_price:
             continue
 
         cryptos.append(symbol)
